@@ -32,15 +32,21 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import at.htl.qr_code_scanner.ui.theme.QrCodeScannerComposeTheme
 import org.w3c.dom.Text
+import kotlinx.coroutines.*
+import java.io.FileNotFoundException
+import java.io.IOException
+import java.net.URL
+import java.net.HttpURLConnection
 
 
 class MainActivity : ComponentActivity() {
 
-    var text = ""
+    var url = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+
             QrCodeScannerComposeTheme {
                 var code by remember {
                     mutableStateOf("")
@@ -110,30 +116,79 @@ class MainActivity : ComponentActivity() {
                         )
 
 
-
 //                        ScanButton(code)
-                        Button(onClick = {
-                            text = code
-                            println(text)
-                        }) {
-                            Text(text = "scan qr")
-                        }
-                        Text(
-                            text = code,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp)
-                        )
 
-
+                        var url = code.replace("localhost", "10.0.2.2")
+                        url = url.replace("qrcodes", "voucher")
+                        url = StringBuilder(url).append("?cancel=true").toString()
+                        ButtonWithAsyncAction(url)
+//                        Button(onClick = {
+//
+//                            println(url)
+//                        }) {
+//                            Text(text = "scan qr")
+//                        }
+//                        Text(
+//                            text = code,
+//                            fontSize = 20.sp,
+//                            fontWeight = FontWeight.Bold,
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(32.dp)
+//                        )
 
 
                     }
                 }
             }
         }
+    }
+
+
+    @Composable
+    fun ButtonWithAsyncAction(url: String, modifier: Modifier = Modifier) {
+        val coroutineScope = rememberCoroutineScope()
+        // This state will tell Compose when to show TicketRedeemed
+        var showTicketRedeemed by remember { mutableStateOf(false) }
+
+        if (showTicketRedeemed) {
+            TicketRedeemed() // This will be displayed when the flag is true
+        } else {
+        Button(onClick = {
+            coroutineScope.launch {
+                val response = getUrlContent(url)
+                println("url: $url")
+                println("response: $response")
+                showTicketRedeemed = true
+            }
+        }) {
+            Text(text = "Scan QR")
+        }
+
+        }
+    }
+
+    private suspend fun getUrlContent(url: String): String = withContext(Dispatchers.IO) {
+        try {
+            (URL(url).openConnection() as HttpURLConnection).run {
+                requestMethod = "GET"
+                return@withContext inputStream.bufferedReader().use { it.readText() }
+            }
+        } catch (e: FileNotFoundException) {
+            return@withContext "File not found: $url"
+        } catch (e: IOException) {
+            return@withContext "IO Error: ${e.message}"
+        } catch (e: Exception) {
+            return@withContext "Error: ${e.message}"
+        }
+    }
+
+    @Composable
+    fun TicketRedeemed(modifier: Modifier = Modifier) {
+        Text(
+            text = "Ticket Redeemed"
+        )
+
     }
 
 
