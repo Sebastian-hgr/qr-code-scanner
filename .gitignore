@@ -1,2 +1,4 @@
 .idea
 .gradle
+meal-voucher-frontend/.angular/
+meal-voucher-frontend/node_modules/
